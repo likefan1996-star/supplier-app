@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>供应商管理系统</title>
+
+<style>
+body {font-family: Arial; padding:15px; background:#f5f5f5;}
+h1 {font-size:20px;}
+.card {background:#fff; padding:12px; margin-bottom:12px; border-radius:10px;}
+input, textarea {width:100%; padding:8px; margin:4px 0;}
+button {width:100%; padding:12px; background:#007bff; color:#fff; border:none; border-radius:8px;}
+.item {margin-bottom:8px;}
+</style>
+</head>
+
+<body>
+
+<h1>供应商打分系统</h1>
+
+<div class="card">
+<input id="name" placeholder="供应商名称">
+
+<div id="questions"></div>
+
+<textarea id="note" placeholder="备注（现场问题/印象）"></textarea>
+
+<button onclick="save()">保存供应商</button>
+</div>
+
+<div class="card">
+<h3>供应商列表（自动排序）</h3>
+<div id="list"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+<script>
+const supabase = window.supabase.createClient(
+  "afjeadzgckgvevbethla",
+  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFmamVhZHpnY2tndmV2YmV0aGxhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY0MDEyMzQsImV4cCI6MjA5MTk3NzIzNH0.hgnp9SSVyH52xeMk6syNgcS2vlSlCwzfzC1FQ4gX9zo"
+);
+
+// 打分项
+const questions = [
+  {name:"产能真实性", max:5},
+  {name:"设备水平", max:5},
+  {name:"工艺完整性", max:5},
+  {name:"交期稳定", max:5},
+  {name:"贴皮质量", max:10},
+  {name:"基材质量", max:5},
+  {name:"油漆工艺", max:5},
+  {name:"细节做工", max:5},
+  {name:"原材料来源", max:5},
+  {name:"木皮供应", max:5},
+  {name:"库存能力", max:5},
+  {name:"报价透明", max:5},
+  {name:"调价机制", max:5},
+  {name:"沟通效率", max:5},
+  {name:"打样能力", max:5},
+  {name:"问题处理", max:5},
+  {name:"项目案例", max:5},
+  {name:"行业经验", max:5}
+];
+
+// 生成输入框
+const container = document.getElementById("questions");
+
+questions.forEach((q,i)=>{
+  container.innerHTML += `
+    <div class="item">
+      ${q.name} (0-${q.max})
+      <input type="number" id="q${i}" max="${q.max}">
+    </div>
+  `;
+});
+
+// 计算总分
+function calcTotal(){
+  let total = 0;
+  for(let i=0;i<questions.length;i++){
+    total += Number(document.getElementById("q"+i).value || 0);
+  }
+  return total;
+}
+
+// 评级
+function getLevel(t){
+  if(t>=85) return "优质供应商";
+  if(t>=70) return "可合作";
+  if(t>=60) return "有风险";
+  return "不建议合作";
+}
+
+// 保存数据
+async function save(){
+  const name = document.getElementById("name").value;
+  const note = document.getElementById("note").value;
+  const total = calcTotal();
+  const level = getLevel(total);
+
+  if(!name){
+    alert("请输入供应商名称");
+    return;
+  }
+
+  const { error } = await supabase.from("suppliers").insert([{
+    name,
+    total,
+    level,
+    note,
+    date: new Date().toLocaleDateString()
+  }]);
+
+  if(error){
+    alert("保存失败，请检查配置");
+  }else{
+    alert("保存成功");
+    load();
+  }
+}
+
+// 加载数据
+async function load(){
+  const { data } = await supabase
+    .from("suppliers")
+    .select("*")
+    .order("total",{ascending:false});
+
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+
+  data.forEach(d=>{
+    list.innerHTML += `
+      <div>
+        <b>${d.name}</b> - ${d.total}分 (${d.level})<br>
+        <small>${d.note || ""}</small>
+        <hr>
+      </div>
+    `;
+  });
+}
+
+// 初始化
+load();
+
+</script>
+
+</body>
+</html>
